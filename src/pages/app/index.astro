@@ -7,53 +7,66 @@ import Base from '../../layouts/Base.astro';
 ---
 
 <Base title="A Cotizar! — Dashboard">
-  <main style="max-width:600px; margin:2rem auto;">
-    <div style="display:flex; justify-content:space-between; align-items:center;">
-      <h1 style="margin:0;">A Cotizar!</h1>
-      <button class="btn-danger" onclick="handleLogout()">Cerrar sesión</button>
-    </div>
+ <div id="app-shell" style="display:none">
+  <!-- TODO: dashboard content en etapas siguientes -->
+  <h1>Dashboard</h1>
+</div>
 
-    <div id="loading" style="margin-top:2rem; color:#888;">Cargando…</div>
-
-    <div id="user-info" style="display:none; margin-top:2rem; background:#fff; padding:1.5rem; border-radius:8px; border:1px solid #e5e7eb;">
-      <img id="user-avatar" src="" alt="Avatar" width="48" height="48"
-           style="border-radius:50%; display:block; margin-bottom:1rem;"
-           onerror="this.style.display='none'" />
-      <p><strong>Nombre:</strong> <span id="user-name"></span></p>
-      <p><strong>Email:</strong>  <span id="user-email"></span></p>
-      <p style="margin:0; color:#6b7280; font-size:0.875rem;">
-        ✅ Autenticación funcionando. Dashboard completo en próximas etapas.
-      </p>
-    </div>
-  </main>
-
-  <script is:inline>
-    (async () => {
-      await Auth.init(AUTH_CONFIG);
-
-      // requireAuth() redirige a Auth0 si no hay sesión activa
-      const user = await Auth.requireAuth();
-      if (!user) return;
-
-      // Mostrar datos del usuario
-      document.getElementById('loading').style.display = 'none';
-
-      const info = document.getElementById('user-info');
-      info.style.display = 'block';
-
-      document.getElementById('user-name').textContent  = user.name  ?? '—';
-      document.getElementById('user-email').textContent = user.email ?? '—';
-
-      const avatar = document.getElementById('user-avatar');
-      if (user.picture) {
-        avatar.src = user.picture;
-      } else {
-        avatar.style.display = 'none';
-      }
-    })();
-
-    function handleLogout() {
-      Auth.logout();
+<script src="https://cdn.auth0.com/js/auth0-spa-js/2.0/auth0-spa-js.production.js"></script>
+<script>
+  /**
+   * Guarda de autenticación y onboarding.
+   * Se ejecuta antes de mostrar cualquier contenido del dashboard.
+   *
+   * Flujo:
+   *   1. ¿Está autenticado?     → No  → /
+   *   2. POST /api/profile      → needsOnboarding? → /app/config
+   *   3. Todo OK                → mostrar dashboard
+   */
+  (async function guard() {
+    const AUTH0_DOMAIN = window.__AUTH0_DOMAIN__ || '';
+    const AUTH0_CLIENT = window.__AUTH0_CLIENT_ID__ || '';
+    const AUTH0_AUDIENCE = window.__AUTH0_AUDIENCE__ || '';
+    
+    if (!window.auth0 || !AUTH0_DOMAIN || !AUTH0_CLIENT) return;
+    
+    const client = await window.auth0.createAuth0Client({
+      domain: AUTH0_DOMAIN,
+      clientId: AUTH0_CLIENT,
+      authorizationParams: { audience: AUTH0_AUDIENCE },
+    });
+    
+    // 1. ¿Autenticado?
+    if (!await client.isAuthenticated()) {
+      window.location.replace('/');
+      return;
     }
-  </script>
+    
+    // 2. Verificar onboarding (idempotente — si ya existe el perfil, lo devuelve sin cambios)
+    try {
+      const token = await client.getTokenSilently({ audience: AUTH0_AUDIENCE });
+      const res = await fetch('/api/profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      });
+      
+      if (res.ok) {
+        const data = await res.json();
+        if (data.needsOnboarding) {
+          window.location.replace('/app/config');
+          return;
+        }
+      }
+    } catch (err) {
+      // Si falla la verificación, dejamos pasar (no bloqueamos el dashboard por un error de red)
+      console.warn('Guarda de onboarding falló silenciosamente:', err);
+    }
+    
+    // 3. Mostrar dashboard
+    document.getElementById('app-shell').style.display = 'block';
+  })();
+</script>
+</body>
+
+</html>
 </Base>

@@ -1,28 +1,148 @@
 ---
 // src/pages/callback.astro
-// Destino del redirect de Auth0.
-// Auth.init() detecta los parámetros ?code= y ?state=, procesa el callback
-// y limpia la URL. Después redirigimos a /app/.
-import Base from '../layouts/Base.astro';
+// Auth0 redirige acá después del login.
+// Este script:
+//   1. Completa el intercambio de código Auth0.
+//   2. Llama a POST /api/profile (crea perfil + empresa si no existen).
+//   3. Redirige a /app/config si la empresa está incompleta, o a /app/ si está completa.
 ---
 
-<Base title="A Cotizar! — Autenticando…">
-  <main style="max-width:400px; margin:4rem auto; text-align:center;">
-    <p>Autenticando…</p>
-  </main>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Iniciando sesión…</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root { --accent: #2a5c45; --bg: #f5f3ef; --text: #1a1916; --muted: #7a7570; }
+    body { display: flex; align-items: center; justify-content: center; min-height: 100vh; background: var(--bg); font-family: system-ui, sans-serif; }
 
-  <script is:inline>
-    (async () => {
-      // Auth.init() procesa el ?code=...&state=... automáticamente
-      // y limpia la URL tras hacerlo.
-      await Auth.init(AUTH_CONFIG);
+    .splash {
+      display: flex; flex-direction: column; align-items: center; gap: 20px;
+      animation: fadeIn .4s ease;
+    }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 
-      if (await Auth.isAuthenticated()) {
-        window.location.replace('/app/');
-      } else {
-        // Si algo falló, volver al inicio
-        window.location.replace('/');
+    .spinner {
+      width: 36px; height: 36px;
+      border: 2.5px solid #d8d4ce;
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin .8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    p { font-size: .9rem; color: var(--muted); }
+
+    .error-box {
+      display: none; flex-direction: column; align-items: center; gap: 12px;
+      background: #fff; border: 1px solid #e2ddd6; border-radius: 10px;
+      padding: 28px 32px; max-width: 360px; text-align: center;
+    }
+    .error-box p { color: #b84040; font-size: .875rem; }
+    .error-box a { color: var(--accent); font-size: .875rem; text-decoration: underline; cursor: pointer; }
+  </style>
+</head>
+<body>
+
+  <div class="splash" id="loading">
+    <div class="spinner"></div>
+    <p>Iniciando sesión…</p>
+  </div>
+
+  <div class="error-box" id="error-box">
+    <p id="error-msg">Ocurrió un error al iniciar sesión.</p>
+    <a href="/">Volver al inicio</a>
+  </div>
+
+  <script src="https://cdn.auth0.com/js/auth0-spa-js/2.0/auth0-spa-js.production.js"></script>
+  <script>
+    const AUTH0_DOMAIN   = window.__AUTH0_DOMAIN__   || '';
+    const AUTH0_CLIENT   = window.__AUTH0_CLIENT_ID__ || '';
+    const AUTH0_AUDIENCE = window.__AUTH0_AUDIENCE__  || '';
+
+    function showError(msg) {
+      document.getElementById('loading').style.display    = 'none';
+      const box = document.getElementById('error-box');
+      box.style.display = 'flex';
+      if (msg) document.getElementById('error-msg').textContent = msg;
+    }
+
+    async function handleCallback() {
+      if (!window.auth0 || !AUTH0_DOMAIN || !AUTH0_CLIENT) {
+        showError('Error de configuración. Contactá soporte.');
+        return;
       }
-    })();
+
+      let auth0Client;
+      try {
+        auth0Client = await window.auth0.createAuth0Client({
+          domain:   AUTH0_DOMAIN,
+          clientId: AUTH0_CLIENT,
+          authorizationParams: { audience: AUTH0_AUDIENCE },
+        });
+      } catch (err) {
+        console.error('Error al crear cliente Auth0:', err);
+        showError('No se pudo inicializar la autenticación.');
+        return;
+      }
+
+      // ── 1. Completar el intercambio de código Auth0 ──────────────────
+      try {
+        await auth0Client.handleRedirectCallback();
+      } catch (err) {
+        console.error('handleRedirectCallback error:', err);
+        showError('El enlace de acceso expiró o es inválido. Intentá ingresar de nuevo.');
+        return;
+      }
+
+      // ── 2. Obtener token y llamar a POST /api/profile ─────────────────
+      let token;
+      try {
+        token = await auth0Client.getTokenSilently({ audience: AUTH0_AUDIENCE });
+      } catch (err) {
+        console.error('getTokenSilently error:', err);
+        showError('No se pudo obtener el token de acceso.');
+        return;
+      }
+
+      let profileData;
+      try {
+        const res = await fetch('/api/profile', {
+          method:  'POST',
+          headers: {
+            'Content-Type':  'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          console.error('POST /api/profile falló:', res.status, body);
+          showError('No se pudo crear tu perfil. Intentá de nuevo.');
+          return;
+        }
+
+        profileData = await res.json();
+      } catch (err) {
+        console.error('Error llamando a /api/profile:', err);
+        showError('Error de red. Verificá tu conexión.');
+        return;
+      }
+
+      // ── 3. Redirigir según estado del onboarding ──────────────────────
+      // needsOnboarding = true  → perfil nuevo o empresa sin datos fiscales completos
+      // needsOnboarding = false → todo completo, ir al dashboard
+      if (profileData.needsOnboarding) {
+        window.location.replace('/app/config');
+      } else {
+        window.location.replace('/app/');
+      }
+    }
+
+    handleCallback();
   </script>
-</Base>
+
+</body>
+</html>

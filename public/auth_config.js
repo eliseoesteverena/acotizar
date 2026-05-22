@@ -14,7 +14,7 @@ const AUTH_CONFIG = {
   // Opcionales — si se omiten, auth.js usa window.location.origin como base.
   redirectUri: 'https://acotizar.pages.dev/callback',
   logoutUri:   'https://acotizar.pages.dev/',
-  // audience:    'https://api.tudominio.com',  // solo si tenés una API registrada en Auth0
+  audience:    'https://acotizar.pages.dev/api',  // solo si tenés una API registrada en Auth0
   cacheLocation: 'localstorage',                   // 'memory' (default, más seguro) | 'localstorage'
   useRefreshTokens: true,                    // requiere Refresh Token Rotation en Auth0 Dashboard
 };

@@ -1,0 +1,361 @@
+---
+// src/pages/app/config.astro
+// Todo el estado se maneja en el cliente con el token de Auth0.
+---
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Configurar empresa — Cotizador</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #f5f3ef;
+      --surface:   #ffffff;
+      --border:    #e2ddd6;
+      --text:      #1a1916;
+      --muted:     #7a7570;
+      --accent:    #2a5c45;
+      --accent-lt: #e8f2ec;
+      --error:     #b84040;
+      --error-lt:  #fdf0f0;
+      --radius:    10px;
+      --shadow:    0 1px 3px rgba(0,0,0,.08), 0 4px 16px rgba(0,0,0,.06);
+    }
+
+    html, body { min-height: 100vh; background: var(--bg); font-family: 'DM Sans', sans-serif; color: var(--text); }
+
+    .page {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 1fr minmax(0, 680px) 1fr;
+      padding: 40px 16px 60px;
+    }
+    .page > * { grid-column: 2; }
+
+    .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 48px; }
+    .logo { font-family: 'DM Serif Display', serif; font-size: 1.35rem; color: var(--text); text-decoration: none; }
+    .step-badge { font-size: .75rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); background: var(--accent-lt); padding: 4px 12px; border-radius: 999px; }
+
+    .intro { margin-bottom: 32px; }
+    .intro h1 { font-family: 'DM Serif Display', serif; font-size: clamp(1.6rem, 4vw, 2.2rem); font-weight: 400; line-height: 1.2; margin-bottom: 10px; letter-spacing: -.02em; }
+    .intro p { color: var(--muted); font-size: .95rem; line-height: 1.6; }
+
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+    .card-section { padding: 28px 32px; border-bottom: 1px solid var(--border); }
+    .card-section:last-child { border-bottom: none; }
+    .section-label { font-size: .7rem; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin-bottom: 20px; }
+
+    .fields { display: grid; gap: 16px; }
+    .fields-2 { grid-template-columns: 1fr 1fr; }
+    @media (max-width: 540px) { .fields-2 { grid-template-columns: 1fr; } }
+    .full { grid-column: 1 / -1; }
+
+    .field { display: flex; flex-direction: column; gap: 6px; }
+    label { font-size: .8rem; font-weight: 500; color: var(--text); }
+    label .req { color: var(--accent); margin-left: 2px; }
+    .field-hint { font-size: .75rem; color: var(--muted); line-height: 1.4; }
+
+    input, select {
+      width: 100%; padding: 9px 13px;
+      font-family: inherit; font-size: .9rem; color: var(--text);
+      background: var(--bg); border: 1.5px solid var(--border); border-radius: 6px;
+      outline: none; transition: border-color .15s, box-shadow .15s;
+    }
+    input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(42,92,69,.1); background: #fff; }
+
+    #global-error { display: none; background: var(--error-lt); border: 1px solid #f0c0c0; color: var(--error); padding: 12px 16px; border-radius: 8px; font-size: .875rem; margin-bottom: 16px; }
+
+    .actions { padding: 24px 32px; display: flex; align-items: center; justify-content: flex-end; gap: 12px; background: var(--bg); border-top: 1px solid var(--border); }
+
+    .btn { padding: 10px 24px; font-family: inherit; font-size: .875rem; font-weight: 600; border-radius: 7px; border: none; cursor: pointer; transition: opacity .15s, transform .1s; }
+    .btn:active { transform: scale(.98); }
+    .btn:disabled { opacity: .5; cursor: not-allowed; }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-primary:hover:not(:disabled) { opacity: .88; }
+    .btn-ghost { background: transparent; color: var(--muted); border: 1.5px solid var(--border); }
+    .btn-ghost:hover:not(:disabled) { border-color: var(--muted); color: var(--text); }
+
+    #success-msg { display: none; align-items: center; gap: 8px; color: var(--accent); font-size: .875rem; font-weight: 500; }
+  </style>
+</head>
+<body>
+  <div class="page">
+
+    <header class="header">
+      <a href="/app/" class="logo">Cotizador</a>
+      <span class="step-badge">Configuración inicial</span>
+    </header>
+
+    <div class="intro">
+      <h1>Configurá tu empresa</h1>
+      <p>Estos datos aparecerán en todas tus cotizaciones y facturas. Podés editarlos en cualquier momento.</p>
+    </div>
+
+    <div id="global-error" role="alert"></div>
+
+    <div class="card" id="form-card">
+
+      <!-- Identificación -->
+      <div class="card-section">
+        <p class="section-label">Identificación legal</p>
+        <div class="fields fields-2">
+          <div class="field full">
+            <label for="razonSocial">Razón social <span class="req">*</span></label>
+            <input type="text" id="razonSocial" placeholder="Ej: Servicios Tecnológicos S.R.L." autocomplete="organization" />
+          </div>
+          <div class="field">
+            <label for="nombreComercial">Nombre comercial</label>
+            <input type="text" id="nombreComercial" placeholder="Opcional" />
+          </div>
+          <div class="field">
+            <label for="nif">CUIT / RUC / NIT / RFC <span class="req">*</span></label>
+            <input type="text" id="nif" placeholder="Ej: 30-12345678-9" />
+          </div>
+          <div class="field full">
+            <label for="regimenFiscal">Régimen fiscal <span class="req">*</span></label>
+            <select id="regimenFiscal">
+              <option value="">Seleccioná un régimen…</option>
+              <option>Responsable Inscripto</option>
+              <option>Monotributo</option>
+              <option>Exento</option>
+              <option>Simplificado</option>
+              <option>Régimen General</option>
+              <option>Pequeño Contribuyente</option>
+              <option>Otro</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Domicilio -->
+      <div class="card-section">
+        <p class="section-label">Domicilio fiscal</p>
+        <div class="fields fields-2">
+          <div class="field full">
+            <label for="calle">Calle <span class="req">*</span></label>
+            <input type="text" id="calle" placeholder="Ej: Av. Corrientes" />
+          </div>
+          <div class="field">
+            <label for="numero">Número</label>
+            <input type="text" id="numero" placeholder="Ej: 1234" />
+          </div>
+          <div class="field">
+            <label for="piso">Piso / Depto</label>
+            <input type="text" id="piso" placeholder="Ej: 3° B" />
+          </div>
+          <div class="field">
+            <label for="codigoPostal">Código postal <span class="req">*</span></label>
+            <input type="text" id="codigoPostal" placeholder="Ej: C1043" />
+          </div>
+          <div class="field">
+            <label for="localidad">Localidad <span class="req">*</span></label>
+            <input type="text" id="localidad" placeholder="Ej: Buenos Aires" />
+          </div>
+          <div class="field">
+            <label for="provincia">Provincia / Estado <span class="req">*</span></label>
+            <input type="text" id="provincia" placeholder="Ej: CABA" />
+          </div>
+          <div class="field">
+            <label for="pais">País</label>
+            <input type="text" id="pais" value="Argentina" />
+          </div>
+        </div>
+      </div>
+
+      <!-- Actividad -->
+      <div class="card-section">
+        <p class="section-label">Actividad económica</p>
+        <div class="fields fields-2">
+          <div class="field full">
+            <label for="actividadDescripcion">Descripción de la actividad <span class="req">*</span></label>
+            <input type="text" id="actividadDescripcion" placeholder="Ej: Desarrollo de software a medida" />
+          </div>
+          <div class="field">
+            <label for="actividadCodigo">Código de actividad</label>
+            <input type="text" id="actividadCodigo" placeholder="Ej: 6201 (opcional)" />
+            <span class="field-hint">CNAE, NCM, ISIC o el que corresponda a tu país.</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Acciones -->
+      <div class="actions">
+        <div id="success-msg">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <circle cx="8" cy="8" r="7" stroke="currentColor" stroke-width="1.5"/>
+            <path d="M5 8l2 2 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          Guardado correctamente
+        </div>
+        <button class="btn btn-ghost" id="btn-skip">Completar luego</button>
+        <button class="btn btn-primary" id="btn-save">Guardar y continuar</button>
+      </div>
+
+    </div>
+
+  </div>
+
+  <script src="https://cdn.auth0.com/js/auth0-spa-js/2.0/auth0-spa-js.production.js"></script>
+  <script>
+    const AUTH0_DOMAIN   = window.__AUTH0_DOMAIN__   || '';
+    const AUTH0_CLIENT   = window.__AUTH0_CLIENT_ID__ || '';
+    const AUTH0_AUDIENCE = window.__AUTH0_AUDIENCE__  || '';
+
+    let auth0Client  = null;
+    let companyId    = null;
+    let isNewCompany = true;
+
+    const $  = (id) => document.getElementById(id);
+    const val = (id) => $(id)?.value.trim() ?? '';
+
+    function showError(msg) {
+      const el = $('global-error');
+      el.textContent = msg;
+      el.style.display = 'block';
+      el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    function setLoading(loading) {
+      $('btn-save').disabled    = loading;
+      $('btn-skip').disabled    = loading;
+      $('btn-save').textContent = loading ? 'Guardando…' : 'Guardar y continuar';
+    }
+
+    function populateForm(company) {
+      if (!company?.fiscal_data) return;
+      const fd  = company.fiscal_data;
+      const set = (id, v) => { if (v != null && $(id)) $(id).value = v; };
+      set('razonSocial',           fd.razonSocial);
+      set('nombreComercial',       fd.nombreComercial);
+      set('nif',                   fd.numeroIdentificacionFiscal);
+      set('regimenFiscal',         fd.regimenFiscal);
+      set('actividadDescripcion',  fd.actividadEconomica?.descripcion);
+      set('actividadCodigo',       fd.actividadEconomica?.codigo);
+      const dom = fd.domicilioFiscal;
+      if (dom) {
+        set('calle',        dom.calle);
+        set('numero',       dom.numero);
+        set('piso',         dom.piso);
+        set('codigoPostal', dom.codigoPostal);
+        set('localidad',    dom.localidad);
+        set('provincia',    dom.provincia);
+        set('pais',         dom.pais ?? 'Argentina');
+      }
+    }
+
+    function readForm() {
+      const errors = [];
+      if (!val('razonSocial'))          errors.push('Razón social es requerida');
+      if (!val('nif'))                  errors.push('Número de identificación fiscal es requerido');
+      if (!val('regimenFiscal'))        errors.push('Régimen fiscal es requerido');
+      if (!val('calle'))                errors.push('Calle es requerida');
+      if (!val('codigoPostal'))         errors.push('Código postal es requerido');
+      if (!val('localidad'))            errors.push('Localidad es requerida');
+      if (!val('provincia'))            errors.push('Provincia es requerida');
+      if (!val('actividadDescripcion')) errors.push('Descripción de actividad es requerida');
+      if (errors.length) return { errors };
+
+      return {
+        name: val('razonSocial'),
+        fiscal_data: {
+          razonSocial:                val('razonSocial'),
+          nombreComercial:            val('nombreComercial') || null,
+          numeroIdentificacionFiscal: val('nif'),
+          domicilioFiscal: {
+            calle:        val('calle'),
+            numero:       val('numero') || null,
+            piso:         val('piso')   || null,
+            departamento: null,
+            codigoPostal: val('codigoPostal'),
+            localidad:    val('localidad'),
+            provincia:    val('provincia'),
+            pais:         val('pais') || 'Argentina',
+          },
+          actividadEconomica: {
+            descripcion: val('actividadDescripcion'),
+            ...(val('actividadCodigo') ? { codigo: val('actividadCodigo') } : {}),
+          },
+          regimenFiscal: val('regimenFiscal'),
+        },
+      };
+    }
+
+    async function handleSave() {
+      $('global-error').style.display = 'none';
+      const form = readForm();
+      if (form.errors) { showError(form.errors.join(' · ')); return; }
+
+      setLoading(true);
+      try {
+        const token  = await auth0Client.getTokenSilently({ audience: AUTH0_AUDIENCE });
+        const url    = isNewCompany ? '/api/company' : `/api/company/${companyId}`;
+        const method = isNewCompany ? 'POST' : 'PUT';
+
+        const res  = await fetch(url, {
+          method,
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ name: form.name, fiscal_data: form.fiscal_data }),
+        });
+        const data = await res.json();
+
+        if (!res.ok) { showError(data.error ?? 'Error al guardar. Intentá de nuevo.'); return; }
+
+        $('success-msg').style.display = 'flex';
+        $('btn-save').style.display    = 'none';
+        $('btn-skip').style.display    = 'none';
+        setTimeout(() => { window.location.href = '/app/'; }, 1200);
+      } catch (err) {
+        console.error(err);
+        showError('No se pudo conectar con el servidor. Verificá tu conexión.');
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    async function init() {
+      if (!window.auth0 || !AUTH0_DOMAIN || !AUTH0_CLIENT) {
+        showError('Error de configuración. Recargá la página.');
+        return;
+      }
+
+      auth0Client = await window.auth0.createAuth0Client({
+        domain: AUTH0_DOMAIN,
+        clientId: AUTH0_CLIENT,
+        authorizationParams: { audience: AUTH0_AUDIENCE },
+      });
+
+      if (!await auth0Client.isAuthenticated()) {
+        window.location.href = '/';
+        return;
+      }
+
+      try {
+        const token = await auth0Client.getTokenSilently({ audience: AUTH0_AUDIENCE });
+        const res   = await fetch('/api/company', { headers: { 'Authorization': `Bearer ${token}` } });
+        if (res.ok) {
+          const { companies } = await res.json();
+          if (companies?.length > 0) {
+            companyId    = companies[0].id;
+            isNewCompany = false;
+            populateForm(companies[0]);
+          }
+        }
+      } catch (err) {
+        console.warn('No se pudieron precargar datos:', err);
+      }
+
+      $('btn-save').addEventListener('click', handleSave);
+      $('btn-skip').addEventListener('click', () => { window.location.href = '/app/'; });
+    }
+
+    init();
+  </script>
+</body>
+</html>
