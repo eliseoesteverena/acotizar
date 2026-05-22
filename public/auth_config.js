@@ -15,6 +15,6 @@ const AUTH_CONFIG = {
   redirectUri: 'https://acotizar.pages.dev/callback',
   logoutUri:   'https://acotizar.pages.dev/',
   // audience:    'https://api.tudominio.com',  // solo si tenés una API registrada en Auth0
-  // cacheLocation: 'memory',                   // 'memory' (default, más seguro) | 'localstorage'
-  // useRefreshTokens: true,                    // requiere Refresh Token Rotation en Auth0 Dashboard
+  cacheLocation: 'localstorage',                   // 'memory' (default, más seguro) | 'localstorage'
+  useRefreshTokens: true,                    // requiere Refresh Token Rotation en Auth0 Dashboard
 };
