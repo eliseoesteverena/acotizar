@@ -1,0 +1,7 @@
+name = "a-cotizar"
+compatibility_date = "2026-01-05"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "acotizar_db"
+database_id = "f22ae922-5e7d-4ef9-8282-b6d5cc38f1ae"

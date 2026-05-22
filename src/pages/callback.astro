@@ -1,0 +1,28 @@
+---
+// src/pages/callback.astro
+// Destino del redirect de Auth0.
+// Auth.init() detecta los parámetros ?code= y ?state=, procesa el callback
+// y limpia la URL. Después redirigimos a /app/.
+import Base from '../layouts/Base.astro';
+---
+
+<Base title="A Cotizar! — Autenticando…">
+  <main style="max-width:400px; margin:4rem auto; text-align:center;">
+    <p>Autenticando…</p>
+  </main>
+
+  <script is:inline>
+    (async () => {
+      // Auth.init() procesa el ?code=...&state=... automáticamente
+      // y limpia la URL tras hacerlo.
+      await Auth.init(AUTH_CONFIG);
+
+      if (await Auth.isAuthenticated()) {
+        window.location.replace('/app/');
+      } else {
+        // Si algo falló, volver al inicio
+        window.location.replace('/');
+      }
+    })();
+  </script>
+</Base>

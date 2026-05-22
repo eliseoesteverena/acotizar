@@ -1,0 +1,43 @@
+---
+// src/pages/index.astro
+// Página pública de entrada.
+// Si el usuario ya está autenticado, redirige a /app/.
+// Si no, muestra los botones de login y registro.
+import Base from '../layouts/Base.astro';
+---
+
+<Base title="A Cotizar! — Ingresá">
+  <main style="max-width:400px; margin:4rem auto; text-align:center;">
+    <h1>A Cotizar!</h1>
+    <p>Generá presupuestos profesionales en segundos.</p>
+
+    <div id="auth-buttons" style="display:flex; gap:1rem; justify-content:center; margin-top:2rem;">
+      <button class="btn-primary"   onclick="handleLogin()">Iniciar sesión</button>
+      <button class="btn-secondary" onclick="handleSignup()">Registrarse</button>
+    </div>
+
+    <p id="loading" style="color:#888;">Verificando sesión…</p>
+  </main>
+
+  <script is:inline>
+    (async () => {
+      await Auth.init(AUTH_CONFIG);
+
+      // Si ya tiene sesión activa, saltar directo al dashboard
+      if (await Auth.isAuthenticated()) {
+        window.location.replace('/app/');
+        return;
+      }
+
+      // Mostrar botones y ocultar mensaje de carga
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('auth-buttons').style.display = 'flex';
+    })();
+
+    // Ocultar botones mientras se verifica la sesión
+    document.getElementById('auth-buttons').style.display = 'none';
+
+    async function handleLogin()  { await Auth.login({ screen_hint: 'login'  }); }
+    async function handleSignup() { await Auth.login({ screen_hint: 'signup' }); }
+  </script>
+</Base>

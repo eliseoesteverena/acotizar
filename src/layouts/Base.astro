@@ -1,0 +1,54 @@
+---
+// src/layouts/Base.astro
+// Layout base para todas las páginas.
+// Carga el SDK de Auth0 vía CDN, auth_config.js y auth.js como scripts estáticos.
+
+interface Props {
+  title?: string;
+}
+
+const { title = 'A Cotizar!' } = Astro.props;
+---
+
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{title}</title>
+
+    <!-- Auth0 SPA SDK — debe cargarse antes que auth.js -->
+    <script
+      src="https://cdn.auth0.com/js/auth0-spa-js/2.1/auth0-spa-js.production.js"
+      is:inline
+    ></script>
+
+    <!-- Módulo de autenticación (orden: config → módulo) -->
+    <script src="/auth_config.js" is:inline></script>
+    <script src="/auth.js" is:inline></script>
+
+    <style>
+      *, *::before, *::after { box-sizing: border-box; }
+      body {
+        font-family: system-ui, sans-serif;
+        margin: 0;
+        padding: 2rem;
+        background: #f5f5f5;
+        color: #111;
+      }
+      button {
+        cursor: pointer;
+        padding: 0.5rem 1.25rem;
+        border-radius: 6px;
+        border: none;
+        font-size: 1rem;
+      }
+      .btn-primary   { background: #2563eb; color: #fff; }
+      .btn-secondary { background: #e5e7eb; color: #111; }
+      .btn-danger    { background: #dc2626; color: #fff; }
+    </style>
+  </head>
+  <body>
+    <slot />
+  </body>
+</html>
